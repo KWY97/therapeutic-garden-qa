@@ -1,7 +1,7 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../utils/test";
 
-test("서비스 메인 페이지 열기", async ({ page }) => {
+test("서비스 메인 페이지 열기", async ({ page, baseURL }) => {
   await page.goto("/");
 
-  await expect(page).toHaveURL(/localhost:8080/);
+  await expect(page).toHaveURL(new URL("/", baseURL!).href);
 });

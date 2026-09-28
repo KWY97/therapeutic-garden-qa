@@ -1,4 +1,4 @@
-import { test } from "@playwright/test";
+import { test } from "../utils/test";
 import { loginAsAdmin } from "../utils/auth";
 
 test("관리자 로그인이 된다", async ({ page }) => {

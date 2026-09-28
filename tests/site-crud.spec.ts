@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { test as base, expect, Page, TestInfo } from '@playwright/test';
+import { test as base, expect, Page, TestInfo } from '../utils/test';
 import { ImageRun, imagePayloadAllowed, openImageEditor, cleanupImages, runImageScenario } from '../utils/spot-images';
 import { loginAsAdmin } from '../utils/auth';
 

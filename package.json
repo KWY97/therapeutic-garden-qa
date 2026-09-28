@@ -3,7 +3,13 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:readonly": "playwright test --project=readonly",
+    "test:crud": "playwright test --project=crud",
+    "test:production": "playwright test --config=playwright.production.config.ts",
+    "test:report": "playwright show-report",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",

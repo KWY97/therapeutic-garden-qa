@@ -1,4 +1,4 @@
-import { test, expect, Locator, Page } from "@playwright/test";
+import { test, expect, Locator, Page } from "../utils/test";
 import { loginAsAdmin } from "../utils/auth";
 
 async function followReadOnlyLink(page: Page, link: Locator, heading: string) {

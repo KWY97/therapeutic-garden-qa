@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../utils/test";
 import { loginAsAdmin } from "../utils/auth";
 
 test("지도 Modal을 열고 닫을 수 있다", async ({ page }) => {
