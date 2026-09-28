@@ -9,3 +9,4 @@ playwright/.cache/
 *.webm
 *trace*.zip
 .DS_Store
+.playwright-mcp/
