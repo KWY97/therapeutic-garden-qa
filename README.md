@@ -46,6 +46,18 @@ Production 실행은 `BASE_URL`을 반드시 지정해야 하며 localhost 주�
 
 Playwright project가 테스트 파일로 분류합니다. `login`, `monitoring`, `healing-spot`, `map`, `navigation`, `smoke`는 read-only입니다. `site-crud.spec.ts`는 local CRUD / 이미지 관리 테스트입니다. 실행할 때마다 `[QA]` 이름을 가진 전용 데이터를 만들고, 현재 실행에서 생성한 데이터만 정리합니다.
 
+## AI 탐색 QA (Playwright MCP)
+
+Playwright Test는 반복 가능한 고정 회귀 테스트에 사용하고, Playwright MCP와 Codex는 자연어 기반 탐색 QA에 사용합니다. MCP로 실제 브라우저를 탐색하며 화면 표시, Modal, Gallery 이미지 전환, Navigation, console error와 page error 등을 확인할 수 있습니다.
+
+데이터 변경이 필요 없는 탐색 QA는 read-only로 실행합니다. 현재 관리자 Monitoring에서 HS 상세, Gallery Thumbnail 전환, 지도 Modal과 주요 관리자 조회 화면을 자연어 탐색 QA로 확인했습니다.
+
+Playwright MCP 설정은 Codex 환경에서 관리합니다. 프로젝트 README에는 MCP 설정이나 프로젝트 비밀번호, 실제 관리자 계정 정보를 기록하지 않습니다.
+
+요청 예시:
+
+> Playwright MCP를 사용해서 관리자 Monitoring을 read-only로 탐색하고 HS 상세, Gallery, 지도 Modal과 주요 조회 페이지를 확인해줘. 데이터는 생성/수정/삭제하지 마.
+
 ## 실패 분석
 
 실패한 테스트의 screenshot, trace, video와 실행 문맥은 `test-results/`에 저장됩니다. 성공한 테스트에는 이 대용량 파일을 보관하지 않습니다. HTML report는 `playwright-report/`에 생성되며 `npm run test:report`로 확인합니다. Playwright trace는 report의 실패 테스트에서 열거나 다음 명령으로 직접 볼 수 있습니다.
@@ -60,4 +72,3 @@ npx playwright show-trace test-results/<실패 테스트 폴더>/trace.zip
 
 - Participant QA 추가
 - Spatial Layout QA 추가
-- 자연어 기반 Playwright MCP / AI Agent 연동
