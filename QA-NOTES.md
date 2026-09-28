@@ -27,7 +27,7 @@ Site CRUD의 전용 데이터와 정리/복구 기준은 아래를 따릅니다.
 ## Site CRUD QA (local 전용)
 
 ```sh
-npx playwright test                       # 기존 조회 11개 + Site/HC/HS CRUD 각 1개
+npx playwright test                       # 기존 조회 11개 + Site/HC/HS CRUD 각 1개 + HS 이미지 1개
 npx playwright test tests/site-crud.spec.ts
 npx playwright test --grep-invert @crud   # 기존 read-only 테스트만 실행
 npx tsc --noEmit
@@ -42,7 +42,7 @@ npx tsc --noEmit
 - 수정은 QA Site 이름만 바꿉니다. 저장 후 새 목록 GET → 변경 이름의 상세 → 수정 화면에서 이름/주소/지도 레벨 유지 여부를 검증합니다.
 - Local 보호는 CRUD 파일에만 적용합니다. URL 파싱 후 `http:`/`https:` 및 정확한 host `localhost`, `127.0.0.1`, `[::1]`만 허용합니다. 사용자 정보가 있는 URL, 유사 도메인, Railway/Production URL은 로그인/페이지 요청 전에 skip합니다. context route는 원래 local origin 밖으로 가는 최상위 navigation 및 변경 요청도 차단합니다. 변경 경로는 관리자 로그인, 현재 실행의 등록, 소유 확인한 ID의 수정/삭제로 제한합니다. 조회 테스트에는 이 보호 장치를 적용하지 않습니다.
 - 등록 제출 직전에 cleanup 필요 상태를 설정하므로 응답 유실도 복구 대상입니다. 시나리오 삭제 및 fixture teardown 모두 정확한 등록명/수정명만 찾고, 같은 ID의 삭제 form과 확인창 메시지를 확인한 뒤 UI로 삭제합니다. 삭제 후 다시 GET하여 부재를 확인합니다.
-- Fixture teardown에는 별도 45초 제한이 있습니다. 새 페이지에서 기존 helper로 로그인한 후 정리합니다. 원래 테스트가 실패했으면 cleanup 오류를 첨부/로그로 남겨 원인을 보존합니다. 시나리오가 성공했는데 cleanup만 실패하면 테스트도 실패합니다.
+- Fixture teardown에는 별도 60초 제한이 있습니다. 새 페이지에서 기존 helper로 로그인한 후 정리합니다. 원래 테스트가 실패했으면 cleanup 오류를 첨부/로그로 남겨 원인을 보존합니다. 시나리오가 성공했는데 cleanup만 실패하면 테스트도 실패합니다.
 - 프로세스 강제 종료, 서버 중단, 세션/SDK 오류 등으로 cleanup을 완료하지 못하면 QA Site가 남을 수 있습니다. 해당 실행의 `qa-site` annotation 또는 `site-cleanup-error` 첨부에서 정확한 이름을 찾아 localhost 관리자 목록에서 ID와 이름을 확인한 뒤 수동으로 삭제합니다. 이름 prefix만으로 일괄 삭제하지 않습니다.
 - Local URL 보호는 연결 대상 DB까지 판별하지 못합니다. 로컬 서비스가 테스트용 DB를 사용하는지 실행자가 확인해야 합니다. 기존 Site 유지 검증 범위는 목록의 ID/이름/주소이며 DB 전체 무변경 증명은 아닙니다. 검증 중 다른 사용자가 기존 Site를 변경하면 비교가 실패할 수 있습니다.
 
@@ -106,3 +106,29 @@ npx playwright test tests/site-crud.spec.ts --grep '내부 HS'   # HS 시나리�
 - `npx tsc --noEmit` 통과.
 - 등록 후 HS ID 확보 전 / 수정 저장·재진입 후 의도적 실패 2건: 원래 오류 보존, HS → HC → Site cleanup 성공. 임시 검증 파일은 제거했습니다.
 - 전체 실행 후 별도 로그인으로 전체 계층 재조회: QA Site/HC/HS 잔여 0개. 기존 Site 1개, HC 3개, HS 6개(HS1~HS6) 유지.
+
+## HS 이미지 관리 QA
+
+- `tests/site-crud.spec.ts`의 전용 시나리오가 기존 Site → HC → HS 생성 helper를 재사용합니다. 이미지 동작은 `utils/spot-images.ts`에 둡니다.
+- `fixtures/images/qa-red.png`, `qa-green.png`, `qa-blue.png`: 직접 생성한 48×48 RGB PNG, 각 123–124바이트. 외부/실제 서비스 이미지를 사용하지 않습니다.
+- 실제 편집 UI의 `새 이미지 추가` input에 `setInputFiles()`로 3장을 선택합니다. 대표/순서/삭제는 모두 임시 편집 상태이며 `HS 수정` 제출 후 저장됩니다.
+- 업로드 후 상세로 이동했다가 수정 화면에 재진입하고, 이미지 로딩과 서버 content 응답 바이트가 fixture와 일치하는지 확인합니다.
+- 파란 이미지를 대표로 지정하고 저장·재진입하여 대표 배지/버튼 비활성화를 확인합니다. 초록 이미지의 `위로 이동` 버튼으로 순서를 변경하고 저장·재진입 후 순서를 검증합니다.
+- 일반 이미지 삭제 후 나머지 이미지 유지, 대표 이미지 삭제 후 남은 첫 이미지가 대표가 되는 서비스 규칙을 검증합니다.
+- Monitoring은 QA Site 선택 후 모니터링 이미지 미설정 상태를 검사합니다. 대표 이미지의 실제 Canvas 표시 검증에는 Site 모니터링 이미지와 저장된 HS 배치가 필요하며 이번 작업에서는 생성하지 않습니다.
+- Local-only 보호를 유지합니다. 이미지 업로드는 소유한 HS 수정 POST에서만 허용하고 fixture 이름/실제 바이트/PNG 형식을 검사합니다. imageOrder/imageDeleted/imageRepresentative의 기존 ID는 해당 HS에서 소유 확인한 ID만 허용하며 imageSpatial은 비어 있어야 합니다.
+- cleanup은 이미지 → HS → HC → Site 순서입니다. 실패 시에도 소유 HS에서 정확한 파일명/바이트를 재확인해 이미지 ID를 복구합니다. 이미지 정리 실패 시 부모 삭제를 진행하지 않으며 원래 테스트 실패는 보존합니다.
+- 삭제 완료는 수정 화면에서 목록이 비었는지와 관찰한 모든 이미지 content URL의 404/410 응답으로 검증합니다. S3 등 저장소의 물리 객체 삭제까지 직접 조회하는 검사는 아닙니다.
+- 기존 데이터 생성 helper에는 HS 등록 필수 좌표를 위한 지도 클릭이 포함됩니다. 이미지 관리 자체에는 지도/Spatial 편집을 추가하지 않습니다.
+
+### 이미지 QA 검증 결과 (2026-09-28)
+
+- 사용자 승인에 따라 기존 HS 생성 helper의 지도 클릭은 필수 좌표 입력 setup에만 사용했습니다. Kakao 렌더링/Marker/SDK에 대한 별도 테스트는 추가하지 않았습니다.
+- 전체 Playwright 15개 통과: read-only 11 + Site/HC/HS CRUD 3 + HS 이미지 관리 1.
+- Railway BASE_URL: 변경 테스트 4개 모두 skipped.
+- `npx tsc --noEmit`, `git diff --check` 통과.
+- 실제 실행에서 input보다 편집 이벤트 연결이 늦는 경우를 확인하여 스크립트가 삽입하는 alert DOM이 준비된 뒤 업로드하도록 수정했습니다. 임의 시간 대기는 사용하지 않습니다.
+- 업로드 저장 직후 이미지 ID 확보 전에 의도적 오류를 주입: 원래 오류 보존, 파일명/바이트로 ID 복구 후 이미지 → HS → HC → Site cleanup 성공. 임시 검증 파일 제거.
+- 정상 cleanup에서 업로드한 3개 이미지 모두 목록 부재 및 content URL 404/410 확인. 종료 후 별도 로그인/전체 계층·이미지 목록 재조회에서 QA Site/HC/HS/이미지 잔여 0개 확인. 기존 Site 1개, HC 3개, HS 6개 유지.
+- Monitoring에서 QA Site 선택 및 모니터링 이미지 미설정 안내 확인. 대표 이미지 Canvas 반영은 Spatial 전제 데이터가 없으므로 범위 밖이며 편집 화면 저장·재진입에서 대표 상태를 검증했습니다.
+- 이미지 content 조회 차단은 검증했으나 원격 저장소 물리 객체 잔여 여부는 직접 조회하지 않았습니다. 강제 종료/외부 저장소·SDK 장애 시 수동 복구가 필요할 수 있습니다.

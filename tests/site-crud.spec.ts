@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { test as base, expect, Page, TestInfo } from '@playwright/test';
+import { ImageRun, imagePayloadAllowed, openImageEditor, cleanupImages, runImageScenario } from '../utils/spot-images';
 import { loginAsAdmin } from '../utils/auth';
 
 const listPath = '/admin/sites';
@@ -11,6 +12,7 @@ type OwnedSite = {
   baseline: { href: string; text: string }[];
   course?: { names: [string, string]; code: string; href?: string; attempted: boolean };
   spot?: { names: [string, string]; code: string; href?: string; attempted: boolean };
+  images?: ImageRun;
   originalSpots?: { list: string; rows: { href: string; text: string }[] }[];
   originalCourses?: { list: string; rows: { href: string; text: string }[] }[];
 };
@@ -131,7 +133,7 @@ const test = base.extend<{ owned: OwnedSite }>({
                 && form.get('courseId') === course!.href!.split('/').pop()
                 && form.getAll('code').length === 1 && form.get('code') === spot!.code
                 && form.getAll('name').length === 1 && spot!.names.includes(String(form.get('name')))
-                && form.getAll('files').every(file => typeof file !== 'string' && file.size === 0);
+                && await imagePayloadAllowed(form, owned.images, url.pathname === `${spot!.href}/edit`);
             } catch { /* Reject unparseable or unexpected mutation payloads. */ }
           }
         }
@@ -149,6 +151,7 @@ const test = base.extend<{ owned: OwnedSite }>({
         try {
           await loginAsAdmin(cleanupPage);
           // Stop on child cleanup failure: never cascade into a parent deletion.
+          if (owned.images) await cleanupImages(cleanupPage, owned);
           if (owned.spot?.attempted) await deleteOwnedSpot(cleanupPage, owned);
           if (owned.course?.attempted) await deleteOwnedCourse(cleanupPage, owned);
           await deleteOwnedSite(cleanupPage, owned);
@@ -163,7 +166,7 @@ const test = base.extend<{ owned: OwnedSite }>({
         } finally { await cleanupPage.close(); }
       }
     }
-  }, { timeout: 45_000 }],
+  }, { timeout: 60_000 }],
 });
 
 test.describe.configure({ mode: 'default' });
@@ -453,8 +456,7 @@ async function deleteOwnedSpot(page: Page, owned: OwnedSite) {
   await assertOriginalSpots(page, owned);
 }
 
-test('QA Site·HC 내부 HS 등록 → 수정 → 재진입 → HS·HC·Site 삭제 @crud', async ({ page, owned }, testInfo) => {
-  test.setTimeout(120_000);
+async function createOwnedSpot(page: Page, owned: OwnedSite, testInfo: TestInfo) {
   await createOwnedCourse(page, owned, testInfo);
   const course = owned.course!;
   const courseId = course.href!.split('/').pop()!;
@@ -511,6 +513,14 @@ test('QA Site·HC 내부 HS 등록 → 수정 → 재진입 → HS·HC·Site 삭
   await expect(page.getByText(spot.code, { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: `${course.code} ${course.names[0]}`, exact: true }))
     .toHaveAttribute('href', course.href!);
+  return { latitude, longitude };
+}
+
+test('QA Site·HC 내부 HS 등록 → 수정 → 재진입 → HS·HC·Site 삭제 @crud', async ({ page, owned }, testInfo) => {
+  test.setTimeout(120_000);
+  const { latitude, longitude } = await createOwnedSpot(page, owned, testInfo);
+  const spot = owned.spot!;
+  const courseId = owned.course!.href!.split('/').pop()!;
   await page.getByRole('link', { name: 'HS 수정', exact: true }).click();
   await expect(page.getByLabel('소속 코스', { exact: true })).toHaveValue(courseId);
   await expect(page.getByLabel('HS 코드', { exact: true })).toHaveValue(spot.code);
@@ -532,4 +542,13 @@ test('QA Site·HC 내부 HS 등록 → 수정 → 재진입 → HS·HC·Site 삭
   await expect(page.locator('#longitude')).toHaveValue(longitude);
   await deleteOwnedSpot(page, owned);
   // Fixture confirms HS absence again before deleting HC, then Site.
+});
+
+test('QA HS 이미지 업로드 → 대표·순서 → 재진입 → 삭제 @crud', async ({ page, owned }, testInfo) => {
+  test.setTimeout(150_000);
+  await createOwnedSpot(page, owned, testInfo);
+  await openImageEditor(page, owned);
+  await expect(page.locator('[data-image-editor]').getByRole('article')).toHaveCount(0);
+  owned.images = { keys: [], sources: [], attempted: false };
+  await runImageScenario(page, owned, testInfo);
 });
