@@ -188,11 +188,21 @@ async function createOwnedSite(page: Page, owned: OwnedSite) {
   // Observed UI: address is readonly; choose a public address through the real postcode UI.
   await page.waitForFunction(() => Boolean((window as Window & { daum?: { Postcode?: unknown } }).daum?.Postcode));
   await page.getByRole('button', { name: '주소 검색', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '주소 검색', exact: true });
+  await expect(dialog).toBeVisible();
   const search = page.frameLocator('#site-postcode-embed iframe').frameLocator('iframe');
-  await search.getByRole('textbox').fill(address);
-  await search.getByRole('button', { name: '검색', exact: true }).click();
-  await search.getByRole('button', { name: `${address} (서울특별시청)`, exact: true }).click();
-  await expect(page.getByRole('dialog', { name: '주소 검색', exact: true })).toBeHidden();
+  const addressSearch = search.getByRole('textbox');
+  await addressSearch.pressSequentially(address);
+  await expect(addressSearch).toHaveValue(address);
+  await addressSearch.press('Enter');
+  const escapedAddress = address.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const addressResult = search.getByRole('button', {
+    name: new RegExp(`^${escapedAddress}(?:\\s|$)`),
+  });
+  await expect(addressResult).toHaveCount(1);
+  await expect(addressResult).toBeVisible();
+  await addressResult.click();
+  await expect(dialog).toBeHidden();
   await expect(page.getByLabel('주소', { exact: true })).toHaveValue(address);
   await expect(page.locator('#latitude')).not.toHaveValue('');
   await expect(page.locator('#longitude')).not.toHaveValue('');

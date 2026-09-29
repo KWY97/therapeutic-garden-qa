@@ -7,7 +7,7 @@ export default defineConfig({
   reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report" }]],
   projects: [
     { name: "readonly", testMatch: /(?:login|monitoring|healing-spot|map|navigation|smoke)\.spec\.ts$/ },
-    { name: "crud", testMatch: /site-crud\.spec\.ts$/ },
+    { name: "crud", testMatch: /(?:site-crud|participant)\.spec\.ts$/ },
   ],
   use: {
     baseURL: process.env.BASE_URL || "http://localhost:8080",

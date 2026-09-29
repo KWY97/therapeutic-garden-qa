@@ -132,3 +132,11 @@ npx playwright test tests/site-crud.spec.ts --grep '내부 HS'   # HS 시나리�
 - 정상 cleanup에서 업로드한 3개 이미지 모두 목록 부재 및 content URL 404/410 확인. 종료 후 별도 로그인/전체 계층·이미지 목록 재조회에서 QA Site/HC/HS/이미지 잔여 0개 확인. 기존 Site 1개, HC 3개, HS 6개 유지.
 - Monitoring에서 QA Site 선택 및 모니터링 이미지 미설정 안내 확인. 대표 이미지 Canvas 반영은 Spatial 전제 데이터가 없으므로 범위 밖이며 편집 화면 저장·재진입에서 대표 상태를 검증했습니다.
 - 이미지 content 조회 차단은 검증했으나 원격 저장소 물리 객체 잔여 여부는 직접 조회하지 않았습니다. 강제 종료/외부 저장소·SDK 장애 시 수동 복구가 필요할 수 있습니다.
+
+## Participant 등록/로그인 QA (local 전용)
+
+- `tests/participant.spec.ts`에 관리자 등록 → 자동 participantNo 확인 → 참가자 로그인/로그아웃 → 관리자 삭제 흐름, 중복 loginId 거부, 이름 필수값 Validation의 3개 회귀 테스트를 추가했습니다. 실행 명령은 기존 `npm run test:crud`이며 새 스크립트는 없습니다.
+- 매 테스트에 UUID 기반 `[QA] Participant …` 이름과 `qa-participant-…` loginId를 사용합니다. participantNo는 입력하지 않고 상세 화면에서 서비스가 발급한 숫자를 검사합니다. 현재 실행 환경에 접속할 수 없어 목록의 participantNo 열 구조를 확인하지 못했으므로 번호 최대값 비교는 추가하지 않았습니다.
+- 최초 목록의 참가자 상세 링크와 행 텍스트를 보관합니다. cleanup은 이번 실행의 정확한 고유 이름으로만 참가자를 찾고 기존 ID와 다름을 확인한 뒤 상세 화면의 삭제 UI를 사용합니다. 삭제 후 새 목록 GET에서 부재와 기존 11개 행의 유지를 확인합니다. 다른 QA 참가자를 일괄 정리하지 않습니다.
+- 생성 POST 직전에 cleanup 상태를 설정해 응답 유실도 정리 대상으로 삼습니다. fixture teardown에서 별도 페이지로 관리자 재로그인 후 삭제를 재시도합니다. cleanup 오류는 첨부/로그에 남기고 최초 시나리오 실패를 보존합니다. 강제 종료나 서버 장애로 정리가 안 되면 `qa-participant` annotation의 정확한 이름/loginId를 대조해 수동으로 정리합니다.
+- `site-crud.spec.ts`와 동일하게 localhost / 127.0.0.1 / [::1] HTTP(S)만 허용하고 외부 mutation/navigation은 route에서 차단합니다. Production 설정은 기존 read-only project만 선택하므로 Participant 테스트를 실행하지 않습니다. Local URL guard는 연결된 DB 종류까지 확인하지 않으므로 localhost가 테스트 DB를 사용하는지 확인해야 합니다.
